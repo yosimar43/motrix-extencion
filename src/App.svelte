@@ -28,7 +28,6 @@
   // Check if we can transition to main app
   $effect(() => {
     if (isDataLoaded && welcomeMinTimeReached && !isTestingConnection && !isTransitioning) {
-      console.log('🎬 Starting transition to main app');
       isTransitioning = true;
       
       // Start fade out of welcome
@@ -40,7 +39,6 @@
       setTimeout(() => {
         isAppReady = true;
         isTransitioning = false;
-        console.log('✅ Transition completed');
       }, 400); // Wait for welcome fade out
     }
   });
@@ -99,12 +97,10 @@
   // Handle welcome completion
   function handleWelcomeReady() {
     // Welcome animations completed
-    console.log('✨ Welcome component ready');
   }
 
   // Skip welcome screen
   function skipWelcome() {
-    console.log('⏭️ Welcome skipped by user');
     
     if (isTransitioning) return; // Prevent double triggers
     
@@ -126,18 +122,14 @@
   // Load initial data from storage
   async function loadInitialData() {
     try {
-      console.log('🔄 Loading initial data...');
       
       const result = await chrome.storage.local.get(['minSizeMB', 'skipNext']);
       minSizeMB = result.minSizeMB ?? 5;
       skipNext = result.skipNext ?? false;
       
-      console.log('✅ Settings loaded:', { minSizeMB, skipNext });
-      
       // Get history from background script
       await loadHistoryFromBackground();
       
-      console.log('✅ Initial data loaded successfully');
     } catch (error) {
       console.error('❌ Error loading initial data:', error);
       throw error; // Re-throw to handle in initializeApp
@@ -150,7 +142,6 @@
       const response = await chrome.runtime.sendMessage({ action: 'getHistory' });
       if (response && response.success) {
         history = response.data || [];
-        console.log('History loaded:', history.length, 'items');
       }
     } catch (error) {
       console.error('Error loading history:', error);

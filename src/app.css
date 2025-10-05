@@ -1,21 +1,20 @@
-/* Import global styles */
-@import './styles/app.css';
-@import './styles/animations.css';
-
-/* Override body styles for extension popup */
+/* Global styles for Chrome extension popup */
 :global(body) {
   margin: 0;
   padding: 0;
-  background-color: var(--bg-primary);
+  background-color: #0d1117;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  width: 420px;
-  min-height: 600px;
-  overflow-x: hidden;
+  overflow: hidden;
+}
+
+:global(*) {
+  box-sizing: border-box;
 }
 
 :global(#app) {
   width: 100%;
   height: 100%;
-  margin: 0;
-  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

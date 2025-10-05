@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Motrix Control - Advanced Download Manager",
-  "version": "3.0",
-  "description": "Complete download manager with multi-link support and Motrix integration",
+  "version": "3.0.0",
+  "description": "Intelligent download interception with modern UI, smart filtering, and seamless Motrix integration",
+  "author": "Michael Sinisterra",
   "action": {
     "default_popup": "index.html",
     "default_icon": {

@@ -40,15 +40,12 @@ class MotrixManager {
     if (areaName === 'local') {
       if (changes.minSizeMB) {
         this.settings.minSizeMB = changes.minSizeMB.newValue ?? 5;
-        console.log('Updated minSizeMB to:', this.settings.minSizeMB);
       }
       if (changes.skipNext) {
         this.settings.skipNext = changes.skipNext.newValue ?? false;
-        console.log('Updated skipNext to:', this.settings.skipNext);
       }
       if (changes.motrixUrl) {
         this.settings.motrixUrl = changes.motrixUrl.newValue ?? 'http://localhost:16800/jsonrpc';
-        console.log('Updated motrixUrl to:', this.settings.motrixUrl);
       }
     }
   }
@@ -92,31 +89,18 @@ class MotrixManager {
   // Handle download creation
   async handleDownloadCreated(downloadItem) {
     try {
-      console.log('Download created:', {
-        url: downloadItem.url,
-        filename: downloadItem.filename,
-        totalBytes: downloadItem.totalBytes,
-        skipNext: this.settings.skipNext,
-        minSizeMB: this.settings.minSizeMB
-      });
-
       // Skip if disabled
       if (this.settings.skipNext) {
-        console.log('⏭️ Skipping download due to skip mode');
         return;
       }
 
       // Check file size and type
       if (!this.shouldInterceptDownload(downloadItem)) {
-        console.log('❌ Download not intercepted - file type or size filter');
         return;
       }
 
-      console.log('✅ Download will be intercepted and sent to Motrix');
-
       // Prevent duplicates
       if (this.duplicateTracker.has(downloadItem.url)) {
-        console.log('🔄 Duplicate download detected, skipping');
         return;
       }
 
@@ -188,13 +172,10 @@ class MotrixManager {
     if (this.settings.minSizeMB > 0 && downloadItem.totalBytes && downloadItem.totalBytes > 0) {
       const sizeMB = downloadItem.totalBytes / (1024 * 1024);
       if (sizeMB < this.settings.minSizeMB) {
-        console.log(`File too small: ${sizeMB.toFixed(2)}MB < ${this.settings.minSizeMB}MB - ${filename || url}`);
         return false;
       }
-      console.log(`File size OK: ${sizeMB.toFixed(2)}MB >= ${this.settings.minSizeMB}MB - ${filename || url}`);
     } else if (this.settings.minSizeMB > 0) {
       // No size info available - use heuristics or default behavior
-      console.log(`No size info available for: ${filename || url} - proceeding with download`);
       
       // For supported files without size info, allow them through
       // This is common for direct download links, streaming files, etc.
@@ -314,7 +295,6 @@ class MotrixManager {
       await chrome.runtime.sendMessage({ action: 'historyUpdated' });
     } catch (error) {
       // Popup might not be open, which is fine
-      console.log('Popup not available for history update notification');
     }
   }
 
@@ -426,17 +406,14 @@ class MotrixManager {
 
   // Extension startup
   onStartup() {
-    console.log('Motrix Control: Service worker started');
     this.loadSettings();
   }
 
   // Extension installation
   onInstalled(details) {
     if (details.reason === 'install') {
-      console.log('Motrix Control: Extension installed');
       this.showNotification('Motrix Control installed successfully!', 'success');
     } else if (details.reason === 'update') {
-      console.log('Motrix Control: Extension updated');
       this.showNotification('Motrix Control updated to v3.0!', 'info');
     }
   }

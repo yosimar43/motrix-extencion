@@ -1,53 +1,43 @@
-# 🚀 Motrix Control - Advanced Download Manager
+# ⚡ Motrix Control - Advanced Download Manager
 
-**A modern Chrome extension for Motrix download manager with multi-link support, advanced UI, and seamless browser integration.**
+**A modern Chrome extension for Motrix download manager with intelligent file filtering, elegant UI animations, and seamless browser integration.**
 
 ![Version](https://img.shields.io/badge/version-3.0-blue.svg)
 ![Manifest](https://img.shields.io/badge/manifest-v3-green.svg)
-![Svelte](https://img.shields.io/badge/svelte-5-orange.svg)
+![Svelte](https://img.shields.io/badge/svelte-5.39-orange.svg)
+![Vite](https://img.shields.io/badge/vite-7.1-purple.svg)
 ![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
 
 ## ✨ Features
 
 ### 🎯 **Core Functionality**
 - **Automatic Download Interception**: Captures browser downloads and redirects them to Motrix
-- **Smart File Filtering**: Configurable minimum file size and supported file types
-- **Duplicate Prevention**: Advanced tracking to prevent duplicate downloads
-- **Real-time Status**: Live connection status with Motrix RPC server
+- **Smart File Filtering**: Configurable minimum file size with improved logic for unknown file sizes
+- **Duplicate Prevention**: Advanced URL tracking to prevent duplicate downloads
+- **Real-time Status Monitoring**: Live connection status with animated indicators
+- **Intelligent Skip Mode**: Temporarily disable download interception with visual feedback
 
-### 📥 **Multi-Link Download Manager**
-- **Batch URL Processing**: Add multiple download links at once
-- **Smart URL Detection**: Automatically extracts HTTP, HTTPS, magnet, and torrent links
-- **Download Queue Management**: Track, start, pause, and delete downloads
-- **Progress Tracking**: Visual progress indicators for active downloads
-- **Status Monitoring**: Real-time status updates (pending, active, finished, error)
+### 🎨 **Modern UI & UX**
+- **Welcome Screen**: Elegant onboarding with animated logo and feature highlights
+- **Professional Design**: Dark dashboard theme with unified CSS variable system
+- **Smooth Transitions**: Carefully orchestrated animations between screens
+- **Interactive Elements**: Hover effects, status indicators, and micro-interactions
+- **Responsive Layout**: 380px optimized popup with perfect centering
+- **Skip Controls**: Intelligent skip button for advanced users
 
-### 📋 **Copy & Paste Zone**
-- **Intelligent URL Parsing**: Paste multiple URLs and automatically detect download links
-- **Clipboard Integration**: One-click paste from clipboard
-- **URL Preview**: Live preview of detected URLs before adding
-- **Batch Operations**: Copy all URLs, clear history, and bulk actions
+### � **Download Management**
+- **History Tracking**: Complete download history with status indicators (success ✓, error ✕, pending •)
+- **URL Truncation**: Smart URL display with domain extraction and tooltips
+- **Retry Functionality**: One-click retry for failed downloads
+- **Real-time Updates**: Live status updates with Chrome messaging
+- **Storage Sync**: Persistent settings and history across browser sessions
 
-### 📜 **Download History**
-- **Complete History Tracking**: Track all download attempts with timestamps
-- **Status Filtering**: Filter by success, error, or all downloads
-- **Retry Failed Downloads**: One-click retry for failed downloads
-- **URL Management**: Copy URLs to clipboard, view full details
-- **History Cleanup**: Clear history with confirmation modal
-
-### ⚙️ **Advanced Settings**
-- **Configurable Minimum Size**: Set minimum file size for interception
-- **Skip Mode**: Temporarily disable download interception
-- **Connection Testing**: Test and verify Motrix RPC connection
-- **Real-time Sync**: Settings automatically sync between popup and background
-
-### 🎨 **Modern UI & Animations**
-- **Tabbed Interface**: Clean navigation between Home, Downloads, and History
-- **Dark Theme**: Professional dark theme with CSS variables
-- **Smooth Animations**: CSS-only animations (fadeIn, slideUp, scaleIn, pulse)
-- **Interactive Elements**: Hover effects, loading states, and transitions
-- **Responsive Design**: Optimized for Chrome extension popup (420px width)
-- **Status Indicators**: Visual status badges with animated indicators
+### ⚙️ **Advanced Configuration**
+- **Size Filtering**: Minimum file size with fallback for unknown sizes
+- **File Type Support**: Expanded support for archives, media, software, and torrents
+- **Connection Testing**: Built-in Motrix connectivity verification
+- **Background Processing**: Service worker for seamless operation
+- **Settings Persistence**: Auto-save configuration changes
 
 ## 🚀 **Installation & Setup**
 
@@ -59,8 +49,8 @@
 ### **Development Setup**
 1. **Clone Repository**
    ```bash
-   git clone https://github.com/your-username/motrix-control
-   cd motrix-control
+   git clone <repository-url>
+   cd motrix-extencion
    ```
 
 2. **Install Dependencies**
@@ -92,41 +82,127 @@
 
 3. **Configure Motrix**
    - Ensure Motrix is running
-   - Enable RPC server in Motrix settings
+   - Enable RPC server in Motrix settings (Preferences → Advanced → JSON-RPC)
    - Default RPC URL: `http://localhost:16800/jsonrpc`
+   - Verify connection using the "Test Connection" button in the extension
 
 ## 🎮 **Usage Guide**
 
+### **First Launch Experience**
+1. **Welcome Screen**: Experience the animated welcome with logo and feature highlights
+2. **Skip Option**: Use the skip button for immediate access (top-right corner)
+3. **Auto-transition**: Wait for automatic transition after initialization completes
+
 ### **Basic Usage**
 1. **Install and Activate**: Load the extension in Chrome
-2. **Test Connection**: Click the extension icon and test Motrix connection
-3. **Configure Settings**: Set minimum download size and preferences
-4. **Auto-Interception**: Downloads will automatically redirect to Motrix
+2. **Test Connection**: Click the extension icon and use "Test Connection" button
+3. **Configure Settings**: Set minimum download size (MB) in the settings section
+4. **Skip Mode**: Toggle "Skip Next" to temporarily disable interception
+5. **Auto-Interception**: Supported downloads will automatically redirect to Motrix
 
-### **Multi-Link Downloads**
-1. **Navigate to Downloads Tab**: Click the Downloads tab in the popup
-2. **Use Copy & Paste Zone**: Paste multiple URLs in the text area
-3. **Add to Motrix**: Click "Add to Motrix" to process all URLs
-4. **Monitor Progress**: Track download status and progress
+### **Download History**
+1. **View History**: Check the history section for all download attempts
+2. **Status Indicators**: 
+   - ✓ Green circle: Successfully sent to Motrix
+   - ✕ Red circle: Failed to send
+   - • Yellow circle: Pending/In progress
+3. **Retry Downloads**: Click the ↗ button to resend failed downloads
+4. **URL Details**: Hover over truncated URLs to see full addresses
+
+### **Settings Management**
+1. **Minimum Size**: Set the minimum file size (in MB) for interception
+2. **Skip Mode**: Temporarily disable download interception
+3. **Real-time Sync**: Settings automatically save and sync
+4. **Connection Status**: Monitor Motrix connection with live status indicator
 
 ## ⚡ **Supported File Types**
 
 The extension automatically detects and intercepts:
-- **Archives**: .zip, .rar, .7z, .tar, .gz
-- **Videos**: .mp4, .avi, .mkv, .mov, .wmv
-- **Audio**: .mp3, .wav, .flac, .aac
-- **Software**: .exe, .msi, .dmg, .deb, .rpm
-- **Images**: .iso, .img, .bin
-- **Torrents**: .torrent files and magnet links
+- **Archives**: .zip, .rar, .7z, .tar, .gz, .bz2, .xz
+- **Videos**: .mp4, .avi, .mkv, .mov, .wmv, .flv, .webm, .m4v
+- **Audio**: .mp3, .wav, .flac, .aac, .ogg, .m4a, .wma
+- **Software**: .exe, .msi, .dmg, .deb, .rpm, .pkg, .app
+- **Disk Images**: .iso, .img, .bin, .vhd, .vmdk
+- **Documents**: .pdf, .epub, .mobi
+- **Mobile Apps**: .apk, .ipa
+- **Torrents**: .torrent files and magnet: links
+
+### **Smart Size Filtering**
+- **Known Sizes**: Files with known sizes are filtered by the minimum size setting
+- **Unknown Sizes**: Files without size information are allowed through (common for direct links)
+- **Magnet Links**: Always processed regardless of size (no size information available)
+- **Heuristic Processing**: Intelligent handling of streaming and dynamic content
 
 ## 🔧 **Technical Architecture**
 
-Built with modern web technologies:
-- **Frontend**: Svelte 5 with new runes syntax ($state, $effect, $derived)
-- **Build System**: Vite with custom Chrome extension configuration
-- **Styling**: Pure CSS with custom variables and animations
+### **Frontend Stack**
+- **Framework**: Svelte 5.39 with runes syntax ($state, $effect, $derived)
+- **Build System**: Vite 7.1 with optimized Chrome extension configuration
+- **Styling**: Pure CSS with CSS Variables design system
+- **Components**: Welcome screen, Main interface, History viewer
+- **Animations**: Svelte transitions (fade, fly, scale) with custom easing
+
+### **Backend Integration**
+- **Service Worker**: Chrome Manifest V3 background script
 - **Chrome APIs**: Downloads, Storage, Notifications, Runtime messaging
-- **RPC Communication**: JSON-RPC 2.0 for Motrix integration
+- **RPC Communication**: JSON-RPC 2.0 protocol for Motrix integration
+- **Storage**: Chrome local storage with real-time sync
+- **Message Passing**: Background ↔ Popup communication system
+
+### **Design System**
+- **Color Palette**: Dark dashboard theme (#0d1117 primary, #00d4a0 accent)
+- **Spacing System**: Consistent spacing scale (4px to 20px)
+- **Typography**: System fonts with proper hierarchy
+- **Component Architecture**: Modular Svelte components
+- **Responsive**: 380px optimized popup layout
+
+### **Development Tools**
+- **Hot Reload**: Vite development server
+- **TypeScript**: JSDoc comments for type safety
+- **ESLint**: Code quality and consistency
+- **Build Optimization**: Tree shaking and minification
+
+## 🎨 **UI/UX Highlights**
+
+### **Welcome Experience**
+- **Animated Logo**: Gradient logo with pulsing rings and shine effects
+- **Progressive Disclosure**: Staggered animations reveal content step by step
+- **Loading Progress**: Visual progress bar with completion feedback
+- **Skip Option**: Intelligent skip button for advanced users
+- **Smooth Transitions**: Orchestrated fade-out → fade-in sequence
+
+### **Main Interface**
+- **Mini Brand**: Compact logo with live status indicator
+- **Section Cards**: Clean card-based layout with hover effects
+- **Status Badges**: Animated connection status with pulse effects
+- **History Component**: Compact download history with smart URL truncation
+- **Responsive Design**: Perfect centering and mobile-optimized layout
+
+### **Micro-Interactions**
+- **Button States**: Hover, active, and disabled states with smooth transitions
+- **Status Indicators**: Pulsing dots for connection status
+- **Loading Spinners**: Custom CSS spinners for connection testing
+- **Card Animations**: Subtle lift effects on hover
+- **Color Transitions**: Smooth color changes based on state
+
+## 🚦 **Current Status & Features**
+
+### **✅ Completed Features**
+- ✅ Automatic download interception with smart filtering
+- ✅ Professional welcome screen with animations
+- ✅ Real-time connection testing and status monitoring
+- ✅ Download history with retry functionality
+- ✅ Settings persistence and real-time sync
+- ✅ Chrome Manifest V3 compliance
+- ✅ Responsive design with perfect centering
+- ✅ Error handling and fallback mechanisms
+
+### **🎯 Current Capabilities**
+- File size filtering with intelligent fallbacks
+- 18+ supported file types including torrents and magnet links
+- Real-time storage synchronization between popup and background
+- Professional UI transitions and micro-interactions
+- Comprehensive error handling and user feedback
 
 ## 📄 **License**
 

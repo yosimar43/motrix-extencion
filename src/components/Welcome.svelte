@@ -13,16 +13,13 @@
     
     timeouts.push(setTimeout(() => {
       isLoaded = true;
-      console.log('🎭 Welcome: First animation started');
     }, 100));
     
     timeouts.push(setTimeout(() => {
       showSecondary = true;
-      console.log('🎭 Welcome: Secondary animations started');
     }, 800));
     
     timeouts.push(setTimeout(() => {
-      console.log('🎭 Welcome: All animations completed');
       onReady();
     }, 1200));
     
