@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Svelte Vite Extension",
+  "name": "Motrix Svelte Extension",
   "version": "1.0",
-  "description": "Una extensión de Chrome construida con Svelte y Vite.",
+  "description": "Una extensión básica de Svelte para redirigir descargas a Motrix.",
   "action": {
     "default_popup": "index.html",
     "default_icon": {
@@ -12,6 +12,12 @@
     }
   },
   "permissions": [
-    "storage"
-  ]
+    "downloads",
+    "storage",
+    "notifications"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
 }
