@@ -9,9 +9,27 @@
   
   // Stagger animations
   $effect(() => {
-    setTimeout(() => isLoaded = true, 100);
-    setTimeout(() => showSecondary = true, 800);
-    setTimeout(() => onReady(), 1200);
+    const timeouts = [];
+    
+    timeouts.push(setTimeout(() => {
+      isLoaded = true;
+      console.log('🎭 Welcome: First animation started');
+    }, 100));
+    
+    timeouts.push(setTimeout(() => {
+      showSecondary = true;
+      console.log('🎭 Welcome: Secondary animations started');
+    }, 800));
+    
+    timeouts.push(setTimeout(() => {
+      console.log('🎭 Welcome: All animations completed');
+      onReady();
+    }, 1200));
+    
+    // Cleanup function
+    return () => {
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
   });
 </script>
 
@@ -97,6 +115,17 @@
           <span>Sincronización en tiempo real</span>
         </div>
       </div>
+
+      <!-- Loading Progress -->
+      <div 
+        class="loading-progress"
+        transition:fly={{ y: 20, duration: 400, delay: 600, easing: quintOut }}
+      >
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+        <p class="loading-text">Inicializando extensión...</p>
+      </div>
     {/if}
   {/if}
 </div>
@@ -115,6 +144,7 @@
     position: relative;
     overflow: hidden;
     width: 100%;
+    z-index: 2;
   }
 
   .welcome-container::before {
@@ -371,6 +401,52 @@
 
   .feature-icon {
     font-size: 14px;
+    opacity: 0.8;
+  }
+
+  /* === LOADING PROGRESS === */
+  .loading-progress {
+    margin-top: var(--spacing-lg);
+    text-align: center;
+    z-index: 2;
+  }
+
+  .progress-bar {
+    width: 200px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 auto var(--spacing-sm);
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), #00b894);
+    border-radius: 2px;
+    animation: progress-fill 1.8s ease-in-out;
+    transform-origin: left;
+  }
+
+  @keyframes progress-fill {
+    0% {
+      transform: scaleX(0);
+    }
+    30% {
+      transform: scaleX(0.3);
+    }
+    70% {
+      transform: scaleX(0.7);
+    }
+    100% {
+      transform: scaleX(1);
+    }
+  }
+
+  .loading-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0;
     opacity: 0.8;
   }
 

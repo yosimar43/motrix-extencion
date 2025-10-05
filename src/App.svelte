@@ -1,5 +1,6 @@
 <script>
-  import { fade } from 'svelte/transition';
+  import { fade, fly } from 'svelte/transition';
+  import { quintOut } from 'svelte/easing';
   import History from './components/History.svelte';
   import Welcome from './components/Welcome.svelte';
 
@@ -12,22 +13,64 @@
   let history = $state([]);
   let showWelcome = $state(true);
   let isAppReady = $state(false);
+  let isDataLoaded = $state(false);
+  let welcomeMinTimeReached = $state(false);
+  let isTransitioning = $state(false);
 
   // --- Effects ---
   $effect(() => {
     // Wait for Chrome API to be available
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      loadInitialData();
-      // Hide welcome screen after data loads and connection test
-      setTimeout(() => {
-        testMotrixConnection();
-        setTimeout(() => {
-          showWelcome = false;
-          isAppReady = true;
-        }, 2000);
-      }, 1500);
+      initializeApp();
     }
   });
+
+  // Check if we can transition to main app
+  $effect(() => {
+    if (isDataLoaded && welcomeMinTimeReached && !isTestingConnection && !isTransitioning) {
+      console.log('🎬 Starting transition to main app');
+      isTransitioning = true;
+      
+      // Start fade out of welcome
+      setTimeout(() => {
+        showWelcome = false;
+      }, 100);
+      
+      // Show main interface after welcome fades out
+      setTimeout(() => {
+        isAppReady = true;
+        isTransitioning = false;
+        console.log('✅ Transition completed');
+      }, 400); // Wait for welcome fade out
+    }
+  });
+
+  // Initialize app with better flow control
+  async function initializeApp() {
+    try {
+      // Load initial data
+      await loadInitialData();
+      
+      // Test connection in background
+      testMotrixConnection();
+      
+      // Mark data as loaded
+      isDataLoaded = true;
+      
+      // Ensure minimum welcome time (for UX)
+      setTimeout(() => {
+        welcomeMinTimeReached = true;
+      }, 1800); // Reduced from 3500ms to 1800ms
+      
+    } catch (error) {
+      console.error('Error initializing app:', error);
+      // Fallback: show main app anyway after short delay
+      setTimeout(() => {
+        showWelcome = false;
+        isAppReady = true;
+      }, 2000);
+    }
+  }
 
   $effect(() => {
     // Auto-save settings when they change
@@ -55,32 +98,49 @@
 
   // Handle welcome completion
   function handleWelcomeReady() {
-    // Additional initialization can go here
-    console.log('Welcome component ready');
+    // Welcome animations completed
+    console.log('✨ Welcome component ready');
   }
 
   // Skip welcome screen
   function skipWelcome() {
-    showWelcome = false;
-    isAppReady = true;
+    console.log('⏭️ Welcome skipped by user');
+    
+    if (isTransitioning) return; // Prevent double triggers
+    
+    // Force conditions and start transition
+    welcomeMinTimeReached = true;
+    
+    if (isDataLoaded && !isTestingConnection) {
+      isTransitioning = true;
+      setTimeout(() => {
+        showWelcome = false;
+      }, 100);
+      setTimeout(() => {
+        isAppReady = true;
+        isTransitioning = false;
+      }, 400);
+    }
   }
 
   // Load initial data from storage
   async function loadInitialData() {
     try {
+      console.log('🔄 Loading initial data...');
+      
       const result = await chrome.storage.local.get(['minSizeMB', 'skipNext']);
       minSizeMB = result.minSizeMB ?? 5;
       skipNext = result.skipNext ?? false;
       
+      console.log('✅ Settings loaded:', { minSizeMB, skipNext });
+      
       // Get history from background script
       await loadHistoryFromBackground();
       
-      // Test connection after a small delay
-      setTimeout(() => {
-        testMotrixConnection();
-      }, 100);
+      console.log('✅ Initial data loaded successfully');
     } catch (error) {
-      console.error('Error loading initial data:', error);
+      console.error('❌ Error loading initial data:', error);
+      throw error; // Re-throw to handle in initializeApp
     }
   }
 
@@ -210,22 +270,36 @@
 <main class="motrix-popup">
   {#if showWelcome}
     <!-- Welcome Screen -->
-    <Welcome 
-      status={motrixStatus} 
-      onReady={handleWelcomeReady}
-    />
-    
-    <!-- Skip Button -->
-    <button 
-      onclick={skipWelcome}
-      class="skip-welcome-btn"
-      transition:fade={{ delay: 2000, duration: 300 }}
+    <div 
+      class="welcome-wrapper"
+      in:fade={{ duration: 300 }}
+      out:fade={{ duration: 300, easing: quintOut }}
     >
-      Skip ⏭️
-    </button>
-  {:else}
+      <Welcome 
+        status={motrixStatus} 
+        onReady={handleWelcomeReady}
+      />
+      
+      <!-- Skip Button -->
+      {#if !isTransitioning}
+        <button 
+          onclick={skipWelcome}
+          class="skip-welcome-btn"
+          transition:fade={{ delay: 2000, duration: 300 }}
+        >
+          Skip ⏭️
+        </button>
+      {/if}
+    </div>
+  {/if}
+
+  {#if isAppReady}
     <!-- Main Interface -->
-    <div class="main-interface" transition:fade={{ duration: 500 }}>
+    <div 
+      class="main-interface" 
+      in:fly={{ y: 20, duration: 500, easing: quintOut, delay: 100 }}
+      out:fade={{ duration: 200 }}
+    >
       <!-- Improved Header -->
       <div class="header">
         <div class="header-content">
@@ -418,6 +492,17 @@
   }
 
   /* === WELCOME SCREEN === */
+  .welcome-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+  }
+
   .skip-welcome-btn {
     position: absolute;
     top: var(--spacing-md);
@@ -430,7 +515,7 @@
     font-size: 11px;
     cursor: pointer;
     transition: var(--transition);
-    z-index: 10;
+    z-index: 11;
     backdrop-filter: blur(10px);
   }
 
@@ -452,6 +537,8 @@
     -ms-overflow-style: none;
     flex: 1;
     width: 100%;
+    position: relative;
+    z-index: 1;
   }
 
   .main-interface::-webkit-scrollbar {
