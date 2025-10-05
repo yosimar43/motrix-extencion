@@ -1,43 +1,133 @@
-# Svelte + Vite
+# 🚀 Motrix Control - Advanced Download Manager
 
-This template should help get you started developing with Svelte in Vite.
+**A modern Chrome extension for Motrix download manager with multi-link support, advanced UI, and seamless browser integration.**
 
-## Recommended IDE Setup
+![Version](https://img.shields.io/badge/version-3.0-blue.svg)
+![Manifest](https://img.shields.io/badge/manifest-v3-green.svg)
+![Svelte](https://img.shields.io/badge/svelte-5-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-brightgreen.svg)
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## ✨ Features
 
-## Need an official Svelte framework?
+### 🎯 **Core Functionality**
+- **Automatic Download Interception**: Captures browser downloads and redirects them to Motrix
+- **Smart File Filtering**: Configurable minimum file size and supported file types
+- **Duplicate Prevention**: Advanced tracking to prevent duplicate downloads
+- **Real-time Status**: Live connection status with Motrix RPC server
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+### 📥 **Multi-Link Download Manager**
+- **Batch URL Processing**: Add multiple download links at once
+- **Smart URL Detection**: Automatically extracts HTTP, HTTPS, magnet, and torrent links
+- **Download Queue Management**: Track, start, pause, and delete downloads
+- **Progress Tracking**: Visual progress indicators for active downloads
+- **Status Monitoring**: Real-time status updates (pending, active, finished, error)
 
-## Technical considerations
+### 📋 **Copy & Paste Zone**
+- **Intelligent URL Parsing**: Paste multiple URLs and automatically detect download links
+- **Clipboard Integration**: One-click paste from clipboard
+- **URL Preview**: Live preview of detected URLs before adding
+- **Batch Operations**: Copy all URLs, clear history, and bulk actions
 
-**Why use this over SvelteKit?**
+### 📜 **Download History**
+- **Complete History Tracking**: Track all download attempts with timestamps
+- **Status Filtering**: Filter by success, error, or all downloads
+- **Retry Failed Downloads**: One-click retry for failed downloads
+- **URL Management**: Copy URLs to clipboard, view full details
+- **History Cleanup**: Clear history with confirmation modal
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+### ⚙️ **Advanced Settings**
+- **Configurable Minimum Size**: Set minimum file size for interception
+- **Skip Mode**: Temporarily disable download interception
+- **Connection Testing**: Test and verify Motrix RPC connection
+- **Real-time Sync**: Settings automatically sync between popup and background
 
-This template contains as little as possible to get started with Vite + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+### 🎨 **Modern UI & Animations**
+- **Tabbed Interface**: Clean navigation between Home, Downloads, and History
+- **Dark Theme**: Professional dark theme with CSS variables
+- **Smooth Animations**: CSS-only animations (fadeIn, slideUp, scaleIn, pulse)
+- **Interactive Elements**: Hover effects, loading states, and transitions
+- **Responsive Design**: Optimized for Chrome extension popup (420px width)
+- **Status Indicators**: Visual status badges with animated indicators
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+## 🚀 **Installation & Setup**
 
-**Why include `.vscode/extensions.json`?**
+### **Prerequisites**
+- Chrome browser (latest version)
+- Motrix download manager installed and running
+- Motrix RPC server enabled (default: localhost:16800)
 
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
+### **Development Setup**
+1. **Clone Repository**
+   ```bash
+   git clone https://github.com/your-username/motrix-control
+   cd motrix-control
+   ```
 
-**Why enable `checkJs` in the JS template?**
+2. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-It is likely that most cases of changing variable types in runtime are likely to be accidental, rather than deliberate. This provides advanced typechecking out of the box. Should you like to take advantage of the dynamically-typed nature of JavaScript, it is trivial to change the configuration.
+3. **Development Mode**
+   ```bash
+   npm run dev
+   ```
 
-**Why is HMR not preserving my local component state?**
+4. **Build Extension**
+   ```bash
+   npm run build
+   ```
 
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/sveltejs/svelte-hmr/tree/master/packages/svelte-hmr#preservation-of-local-state).
+### **Chrome Extension Installation**
+1. **Build the Extension**
+   ```bash
+   npm run build
+   ```
 
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
+2. **Load in Chrome**
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode" (top right toggle)
+   - Click "Load unpacked" and select the `dist` folder
+   - The extension icon should appear in your toolbar
 
-```js
-// store.js
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
-```
+3. **Configure Motrix**
+   - Ensure Motrix is running
+   - Enable RPC server in Motrix settings
+   - Default RPC URL: `http://localhost:16800/jsonrpc`
+
+## 🎮 **Usage Guide**
+
+### **Basic Usage**
+1. **Install and Activate**: Load the extension in Chrome
+2. **Test Connection**: Click the extension icon and test Motrix connection
+3. **Configure Settings**: Set minimum download size and preferences
+4. **Auto-Interception**: Downloads will automatically redirect to Motrix
+
+### **Multi-Link Downloads**
+1. **Navigate to Downloads Tab**: Click the Downloads tab in the popup
+2. **Use Copy & Paste Zone**: Paste multiple URLs in the text area
+3. **Add to Motrix**: Click "Add to Motrix" to process all URLs
+4. **Monitor Progress**: Track download status and progress
+
+## ⚡ **Supported File Types**
+
+The extension automatically detects and intercepts:
+- **Archives**: .zip, .rar, .7z, .tar, .gz
+- **Videos**: .mp4, .avi, .mkv, .mov, .wmv
+- **Audio**: .mp3, .wav, .flac, .aac
+- **Software**: .exe, .msi, .dmg, .deb, .rpm
+- **Images**: .iso, .img, .bin
+- **Torrents**: .torrent files and magnet links
+
+## 🔧 **Technical Architecture**
+
+Built with modern web technologies:
+- **Frontend**: Svelte 5 with new runes syntax ($state, $effect, $derived)
+- **Build System**: Vite with custom Chrome extension configuration
+- **Styling**: Pure CSS with custom variables and animations
+- **Chrome APIs**: Downloads, Storage, Notifications, Runtime messaging
+- **RPC Communication**: JSON-RPC 2.0 for Motrix integration
+
+## 📄 **License**
+
+MIT License - Built with ❤️ using Svelte 5, Vite, and modern web technologies.

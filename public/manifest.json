@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Motrix Svelte Extension",
-  "version": "1.0",
-  "description": "Una extensión básica de Svelte para redirigir descargas a Motrix.",
+  "name": "Motrix Control - Advanced Download Manager",
+  "version": "3.0",
+  "description": "Complete download manager with multi-link support and Motrix integration",
   "action": {
     "default_popup": "index.html",
     "default_icon": {
@@ -14,10 +14,19 @@
   "permissions": [
     "downloads",
     "storage",
-    "notifications"
+    "notifications",
+    "tabs"
   ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
+  },
+  "host_permissions": [
+    "http://localhost:16800/*",
+    "https://*/*",
+    "http://*/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }

@@ -1,18 +1,21 @@
-/* Reset básico */
-* {
+/* Import global styles */
+@import './styles/app.css';
+@import './styles/animations.css';
+
+/* Override body styles for extension popup */
+:global(body) {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
+  background-color: var(--bg-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  width: 420px;
+  min-height: 600px;
+  overflow-x: hidden;
 }
 
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #111827;
-  color: #ffffff;
-}
-
-#app {
-  width: 320px;
+:global(#app) {
+  width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
 }
