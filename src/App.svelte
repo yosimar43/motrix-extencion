@@ -1,6 +1,7 @@
 <script>
   import { fade } from 'svelte/transition';
   import History from './components/History.svelte';
+  import Welcome from './components/Welcome.svelte';
 
   // --- Svelte 5 State Management ---
   let minSizeMB = $state(5);
@@ -9,12 +10,22 @@
   let notification = $state({ show: false, message: '', type: 'info' });
   let isTestingConnection = $state(false);
   let history = $state([]);
+  let showWelcome = $state(true);
+  let isAppReady = $state(false);
 
   // --- Effects ---
   $effect(() => {
     // Wait for Chrome API to be available
     if (typeof chrome !== 'undefined' && chrome.storage) {
       loadInitialData();
+      // Hide welcome screen after data loads and connection test
+      setTimeout(() => {
+        testMotrixConnection();
+        setTimeout(() => {
+          showWelcome = false;
+          isAppReady = true;
+        }, 2000);
+      }, 1500);
     }
   });
 
@@ -41,6 +52,18 @@
       return () => clearTimeout(safetyTimeout);
     }
   });
+
+  // Handle welcome completion
+  function handleWelcomeReady() {
+    // Additional initialization can go here
+    console.log('Welcome component ready');
+  }
+
+  // Skip welcome screen
+  function skipWelcome() {
+    showWelcome = false;
+    isAppReady = true;
+  }
 
   // Load initial data from storage
   async function loadInitialData() {
@@ -90,13 +113,12 @@
   }
 
   function toggleSkipNext() {
+    skipNext = !skipNext;
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      const newValue = !skipNext;
-      skipNext = newValue;
-      chrome.storage.local.set({ skipNext: newValue });
+      chrome.storage.local.set({ skipNext });
       showNotification(
-        newValue ? 'Next download will be skipped' : 'Download redirection is active',
-        'info'
+        skipNext ? 'Next download will be skipped' : 'Downloads will be sent to Motrix',
+        skipNext ? 'warning' : 'success'
       );
     } else {
       showNotification('Chrome API not available', 'error');
@@ -186,110 +208,139 @@
 </script>
 
 <main class="motrix-popup">
-  <!-- Header -->
-  <div class="header">
-    <div class="header-content">
-      <h1 class="title">Motrix Control</h1>
-      <p class="subtitle">Download Manager Extension</p>
-    </div>
-    <div class="status">
-      <span class="status-label">Status:</span>
-      <div class="status-indicator {motrixStatus}">
-        {#if motrixStatus === 'online'}
-          🟢
-        {:else if motrixStatus === 'offline'}
-          �
-        {:else}
-          🟡
-        {/if}
+  {#if showWelcome}
+    <!-- Welcome Screen -->
+    <Welcome 
+      status={motrixStatus} 
+      onReady={handleWelcomeReady}
+    />
+    
+    <!-- Skip Button -->
+    <button 
+      onclick={skipWelcome}
+      class="skip-welcome-btn"
+      transition:fade={{ delay: 2000, duration: 300 }}
+    >
+      Skip ⏭️
+    </button>
+  {:else}
+    <!-- Main Interface -->
+    <div class="main-interface" transition:fade={{ duration: 500 }}>
+      <!-- Improved Header -->
+      <div class="header">
+        <div class="header-content">
+          <div class="brand-mini">
+            <div class="mini-logo">⚡</div>
+            <div class="brand-text">
+              <h1 class="title">Motrix Control</h1>
+              <p class="subtitle">Advanced Download Manager</p>
+            </div>
+          </div>
+          <div class="header-status">
+            <div class="status-indicator {motrixStatus}">
+              {#if motrixStatus === 'online'}
+                <div class="status-dot online"></div>
+                <span class="status-text">Connected</span>
+              {:else if motrixStatus === 'offline'}
+                <div class="status-dot offline"></div>
+                <span class="status-text">Offline</span>
+              {:else}
+                <div class="status-dot unknown"></div>
+                <span class="status-text">Unknown</span>
+              {/if}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connection Section -->
+      <div class="connection-section">
+        <h3 class="section-title">🔗 Connection</h3>
+        <button
+          onclick={testMotrixConnection}
+          disabled={isTestingConnection}
+          class="btn {motrixStatus === 'online' ? 'btn-success' : motrixStatus === 'offline' ? 'btn-danger' : 'btn-secondary'} {isTestingConnection ? 'btn-disabled' : ''} btn-full"
+        >
+          {#if isTestingConnection}
+            <span class="spinner"></span>
+            Testing...
+          {:else}
+            {#if motrixStatus === 'online'}
+              ✅ Connected
+            {:else if motrixStatus === 'offline'}
+              ❌ Test Connection
+            {:else}
+              🔗 Test Connection
+            {/if}
+          {/if}
+        </button>
+      </div>
+
+  <!-- Settings Section -->
+  <div class="settings-section">
+    <h3 class="section-title">⚙️ Settings</h3>
+    <div class="settings-content">
+      <div class="input-group">
+        <label for="min-size" class="input-label">Min Size (MB)</label>
+        <input
+          type="number"
+          id="min-size"
+          bind:value={minSizeMB}
+          min="1"
+          max="1000"
+          class="input-field"
+        />
+      </div>
+      <div class="toggle-group">
+        <button
+          onclick={toggleSkipNext}
+          class="btn {skipNext ? 'btn-warning' : 'btn-primary'} btn-sm"
+        >
+          {skipNext ? '⏸️ Resume' : '⏭️ Skip Next'}
+        </button>
+        <span class="toggle-status {skipNext ? 'warning' : 'success'}">
+          {skipNext ? 'Skipping' : 'Active'}
+        </span>
       </div>
     </div>
   </div>
 
-  <!-- Connection Test -->
-  <div class="connection-section">
-    <button
-      onclick={testMotrixConnection}
-      disabled={isTestingConnection}
-      class="btn {motrixStatus === 'online' ? 'btn-success' : motrixStatus === 'offline' ? 'btn-danger' : 'btn-secondary'} {isTestingConnection ? 'btn-disabled' : ''}"
-    >
-      {#if isTestingConnection}
-        <span class="spinner"></span>
-        Connecting...
-      {:else}
-        {#if motrixStatus === 'online'}
-          ✅ Connected
-        {:else if motrixStatus === 'offline'}
-          ❌ Test Connection
-        {:else}
-          🔗 Test Connection
-        {/if}
-      {/if}
-    </button>
-  </div>
-
-  <!-- Settings -->
-  <div class="settings">
-    <!-- Minimum Size -->
-    <div class="input-section">
-      <label for="min-size" class="input-label">
-        Minimum Download Size (MB)
-      </label>
-      <input
-        type="number"
-        id="min-size"
-        bind:value={minSizeMB}
-        min="1"
-        max="1000"
-        class="input-field"
-      />
-    </div>
-
-    <!-- Skip Next Button -->
-    <div class="skip-section">
-      <button
-        onclick={toggleSkipNext}
-        class="btn {skipNext ? 'btn-warning' : 'btn-primary'}"
-      >
-        {skipNext ? '⏸️ Resume Downloads' : '⏭️ Skip Next Download'}
-      </button>
-      <p class="skip-help">
-        {skipNext ? 'Next download will be ignored' : 'All downloads will be sent to Motrix'}
-      </p>
-    </div>
-
-    <!-- Current Settings Display -->
-    <div class="current-settings">
-      <h3 class="settings-title">Current Settings</h3>
-      <div class="settings-grid">
-        <div class="setting-item">
-          <span class="setting-label">Min Size:</span>
-          <span class="setting-value primary">{minSizeMB} MB</span>
+      <!-- History Section -->
+      <div class="history-section">
+        <div class="history-header">
+          <h3 class="section-title">📜 History</h3>
+          <button
+            onclick={refreshHistory}
+            class="btn btn-ghost btn-sm"
+            title="Refresh history"
+          >
+            🔄
+          </button>
         </div>
-        <div class="setting-item">
-          <span class="setting-label">Skip Mode:</span>
-          <span class="setting-value {skipNext ? 'warning' : 'success'}">
-            {skipNext ? 'Enabled' : 'Disabled'}
+        <div class="history-content">
+          <History {history} onResend={handleResend} />
+        </div>
+      </div>
+
+      <!-- Status Summary -->
+      <div class="status-summary">
+        <div class="summary-item">
+          <span class="summary-label">Min Size</span>
+          <span class="summary-value">{minSizeMB} MB</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Mode</span>
+          <span class="summary-value {skipNext ? 'warning' : 'success'}">
+            {skipNext ? 'Skip' : 'Active'}
           </span>
         </div>
+        <div class="summary-item">
+          <span class="summary-label">History</span>
+          <span class="summary-value">{history.length} items</span>
+        </div>
       </div>
     </div>
-  </div>
-
-  <!-- History Panel -->
-  <div class="history-section">
-    <div class="history-header">
-      <h3>Download History</h3>
-      <button
-        onclick={refreshHistory}
-        class="btn btn-secondary btn-sm"
-        title="Refresh history"
-      >
-        🔄
-      </button>
-    </div>
-    <History {history} onResend={handleResend} />
-  </div>
+  {/if}
 
   <!-- Notifications -->
   {#if notification.show}
@@ -303,256 +354,458 @@
 </main>
 
 <style>
-  /* CSS Variables */
+  /* === UNIFIED DESIGN SYSTEM === */
   :root {
-    --bg-primary: #111827;
-    --bg-secondary: #1f2937;
-    --bg-tertiary: #374151;
-    --text-primary: #ffffff;
-    --text-secondary: #d1d5db;
-    --text-muted: #9ca3af;
-    --color-blue: #3b82f6;
-    --color-blue-hover: #2563eb;
-    --color-green: #10b981;
-    --color-red: #ef4444;
-    --color-yellow: #f59e0b;
-    --color-yellow-hover: #d97706;
-    --border-color: #4b5563;
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    /* Colors - Dark Dashboard Theme */
+    --bg-primary: #0d1117;
+    --bg-secondary: #1a1f2c;
+    --bg-card: #21262d;
+    --bg-card-hover: #2d333b;
+    --bg-input: #161b22;
+    
+    --accent-primary: #00d4a0;
+    --accent-secondary: #3a7bd5;
+    --accent-danger: #f85149;
+    --accent-warning: #d29922;
+    
+    --text-primary: #f0f6fc;
+    --text-secondary: #8b949e;
+    --text-muted: #656d76;
+    
+    --border-color: #30363d;
+    --border-hover: #484f58;
+    --border-accent: rgba(0, 212, 160, 0.3);
+    
+    /* Spacing System */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 20px;
+    
+    /* Radius System */
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    
+    /* Shadow System */
+    --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.15);
+    --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.25);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.12);
+    
+    /* Transition System */
+    --transition: all 0.25s ease-in-out;
+    --transition-fast: all 0.15s ease-in-out;
   }
 
-  /* Container */
+  /* === MAIN CONTAINER === */
   .motrix-popup {
-    width: 320px;
-    background-color: var(--bg-primary);
+    width: 380px;
+    min-height: 500px;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
     color: var(--text-primary);
-    padding: 16px;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    box-shadow: var(--shadow);
+    font-size: 14px;
+    box-shadow: var(--shadow-medium);
+    border: 1px solid var(--border-color);
+    max-height: 600px;
+    overflow: hidden;
+    position: relative;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
   }
 
-  /* Header */
+  /* === WELCOME SCREEN === */
+  .skip-welcome-btn {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 11px;
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 10;
+    backdrop-filter: blur(10px);
+  }
+
+  .skip-welcome-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text-primary);
+  }
+
+  /* === MAIN INTERFACE === */
+  .main-interface {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    max-height: 600px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1;
+    width: 100%;
+  }
+
+  .main-interface::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* === IMPROVED HEADER === */
   .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    padding-bottom: var(--spacing-lg);
     border-bottom: 1px solid var(--border-color);
   }
 
   .header-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: 1;
+  }
+
+  .brand-mini {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .mini-logo {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent-primary), #00b894);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 4px 12px rgba(0, 212, 160, 0.3);
+  }
+
+  .brand-text {
     flex: 1;
   }
 
   .title {
-    font-size: 18px;
-    font-weight: bold;
-    color: var(--color-blue);
-    margin: 0 0 2px 0;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
   }
 
   .subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin: 0;
-  }
-
-  .status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .status-label {
     font-size: 11px;
     color: var(--text-muted);
+    margin: 2px 0 0 0;
+    font-weight: 500;
+  }
+
+  .header-status {
+    flex-shrink: 0;
   }
 
   .status-indicator {
-    font-size: 12px;
     display: flex;
     align-items: center;
+    gap: var(--spacing-xs);
+    background: var(--bg-card);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
   }
 
-  /* Connection Section */
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    position: relative;
+  }
+
+  .status-dot.online {
+    background: var(--accent-primary);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+
+  .status-dot.offline {
+    background: var(--accent-danger);
+  }
+
+  .status-dot.unknown {
+    background: var(--accent-warning);
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
+  }
+
+  .status-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  /* === CONNECTION SECTION === */
   .connection-section {
-    margin-bottom: 16px;
+    background: var(--bg-card);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
   }
 
-  /* Settings */
-  .settings {
+  .connection-section:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 var(--spacing-md) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  /* === SETTINGS SECTION === */
+  .settings-section {
+    background: var(--bg-card);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+  }
+
+  .settings-section:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
+  }
+
+  .settings-content {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: var(--spacing-md);
   }
 
-  .input-section {
-    background-color: var(--bg-secondary);
-    border-radius: 6px;
-    padding: 12px;
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
   }
 
   .input-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .input-field {
-    width: 100%;
-    padding: 8px;
-    background-color: var(--bg-tertiary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-input);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 14px;
-    box-sizing: border-box;
-    transition: all 0.2s ease-in-out;
+    font-size: 13px;
+    transition: var(--transition);
   }
 
   .input-field:focus {
     outline: none;
-    border-color: var(--color-blue);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--border-accent);
   }
 
-  .skip-section {
-    text-align: center;
+  .toggle-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
   }
 
-  .skip-help {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin: 6px 0 0 0;
-    font-style: italic;
-  }
-
-  .current-settings {
-    background-color: var(--bg-secondary);
-    border-radius: 6px;
-    padding: 12px;
-    border: 1px solid var(--border-color);
-  }
-
-  .settings-title {
-    font-size: 13px;
+  .toggle-status {
+    font-size: 10px;
     font-weight: 600;
-    margin: 0 0 8px 0;
-    color: var(--text-secondary);
-    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px var(--spacing-sm);
+    border-radius: var(--radius-sm);
   }
 
-  .settings-grid {
+  .toggle-status.success { 
+    color: var(--accent-primary); 
+    background: rgba(0, 212, 160, 0.1);
+  }
+  .toggle-status.warning { 
+    color: var(--accent-warning); 
+    background: rgba(210, 153, 34, 0.1);
+  }
+
+  /* === HISTORY SECTION === */
+  .history-section {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    transition: var(--transition);
   }
 
-  .setting-item {
+  .history-section:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
+  }
+
+  .history-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
   }
 
-  .setting-label {
-    color: var(--text-muted);
-    font-size: 12px;
+  .history-content {
+    flex: 1;
+    min-height: 200px;
+    max-height: 300px;
+    overflow: hidden;
   }
 
-  .setting-value {
-    font-weight: 500;
-    font-size: 12px;
-  }
-
-  .setting-value.primary { color: var(--color-blue); }
-  .setting-value.success { color: var(--color-green); }
-  .setting-value.warning { color: var(--color-yellow); }
-
-  /* Buttons */
+  /* === BUTTONS === */
   .btn {
-    width: 100%;
-    padding: 10px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    color: var(--text-primary);
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    background: transparent;
+    border: 1px solid transparent;
   }
 
-  .btn:hover:not(.btn-disabled) {
+  .btn:hover {
     transform: translateY(-1px);
-    box-shadow: var(--shadow);
   }
 
-  .btn:active:not(.btn-disabled) {
+  .btn:active {
     transform: translateY(0);
   }
 
+  .btn-full {
+    width: 100%;
+  }
+
+  .btn-sm {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 11px;
+  }
+
   .btn-primary {
-    background-color: var(--color-blue);
+    background: var(--accent-primary);
+    color: white;
+    box-shadow: var(--shadow-card);
   }
 
-  .btn-primary:hover:not(.btn-disabled) {
-    background-color: var(--color-blue-hover);
-  }
-
-  .btn-warning {
-    background-color: var(--color-yellow);
-  }
-
-  .btn-warning:hover:not(.btn-disabled) {
-    background-color: var(--color-yellow-hover);
+  .btn-primary:hover {
+    background: #00c794;
+    box-shadow: var(--shadow-soft);
   }
 
   .btn-secondary {
-    background-color: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    background: var(--accent-secondary);
+    color: white;
+    box-shadow: var(--shadow-card);
   }
 
-  .btn-secondary:hover:not(.btn-disabled) {
-    background-color: var(--border-color);
+  .btn-secondary:hover {
+    background: #326bc7;
+    box-shadow: var(--shadow-soft);
   }
 
   .btn-success {
-    background-color: var(--color-green);
-    border: 1px solid var(--color-green);
+    background: var(--accent-primary);
     color: white;
+    box-shadow: var(--shadow-card);
   }
 
-  .btn-success:hover:not(.btn-disabled) {
-    background-color: #28a745;
+  .btn-success:hover {
+    background: #00c794;
+    box-shadow: var(--shadow-soft);
   }
 
   .btn-danger {
-    background-color: var(--color-red);
-    border: 1px solid var(--color-red);
+    background: var(--accent-danger);
     color: white;
+    box-shadow: var(--shadow-card);
   }
 
-  .btn-danger:hover:not(.btn-disabled) {
-    background-color: #dc3545;
+  .btn-danger:hover {
+    background: #e6423d;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .btn-warning {
+    background: var(--accent-warning);
+    color: white;
+    box-shadow: var(--shadow-card);
+  }
+
+  .btn-warning:hover {
+    background: #bb851c;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+  }
+
+  .btn-ghost:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
   }
 
   .btn-disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
+    transform: none !important;
   }
 
-  /* Spinner */
+  /* === SPINNER === */
   .spinner {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top: 2px solid white;
     border-radius: 50%;
@@ -564,57 +817,94 @@
     100% { transform: rotate(360deg); }
   }
 
-  /* Notifications */
+  /* === STATUS SUMMARY === */
+  .status-summary {
+    display: flex;
+    justify-content: space-between;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+  }
+
+  .summary-item:hover {
+    background: var(--bg-card-hover);
+  }
+
+  .summary-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+
+  .summary-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .summary-value.success { color: var(--accent-primary); }
+  .summary-value.warning { color: var(--accent-warning); }
+
+  /* === NOTIFICATIONS === */
   .notification {
     position: fixed;
-    bottom: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 10px 16px;
-    border-radius: 6px;
+    top: var(--spacing-lg);
+    right: var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-sm);
     font-size: 12px;
     font-weight: 500;
-    box-shadow: var(--shadow);
     z-index: 1000;
-    max-width: 300px;
-    text-align: center;
+    max-width: 280px;
+    backdrop-filter: blur(10px);
+    border: 1px solid;
+    box-shadow: var(--shadow-medium);
   }
 
   .notification-success {
-    background-color: rgba(16, 185, 129, 0.1);
-    color: var(--color-green);
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    background: rgba(0, 212, 160, 0.1);
+    color: var(--accent-primary);
+    border-color: rgba(0, 212, 160, 0.3);
   }
 
   .notification-error {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: var(--color-red);
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(248, 81, 73, 0.1);
+    color: var(--accent-danger);
+    border-color: rgba(248, 81, 73, 0.3);
+  }
+
+  .notification-warning {
+    background: rgba(210, 153, 34, 0.1);
+    color: var(--accent-warning);
+    border-color: rgba(210, 153, 34, 0.3);
   }
 
   .notification-info {
-    background-color: rgba(59, 130, 246, 0.1);
-    color: var(--color-blue);
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    background: rgba(58, 123, 213, 0.1);
+    color: var(--accent-secondary);
+    border-color: rgba(58, 123, 213, 0.3);
   }
 
-  /* History Section */
-  .history-section {
-    margin-top: 16px;
-  }
-
-  .history-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-
-  .history-header h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin: 0;
+  /* === RESPONSIVE === */
+  @media (max-width: 400px) {
+    .motrix-popup {
+      width: 100%;
+      max-width: 380px;
+    }
   }
 </style>
-

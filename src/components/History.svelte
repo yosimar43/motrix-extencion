@@ -1,25 +1,21 @@
 <script>
-  import { fade, slide } from 'svelte/transition';
+  import { slide } from 'svelte/transition';
 
-  // Props
   let { history = [], onResend = () => {} } = $props();
 
-  // Truncate URL for display
-  function truncateUrl(url, maxLength = 40) {
+  function truncateUrl(url, maxLength = 32) {
     if (url.length <= maxLength) return url;
     return url.substring(0, maxLength) + '...';
   }
 
-  // Get domain from URL
   function getDomain(url) {
     try {
-      return new URL(url).hostname;
+      return new URL(url).hostname.replace('www.', '');
     } catch {
       return 'Unknown';
     }
   }
 
-  // Get relative time
   function getRelativeTime(timestamp) {
     const now = Date.now();
     const diff = now - timestamp;
@@ -27,55 +23,44 @@
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
     
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
+    if (minutes < 1) return 'now';
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+    return `${days}d`;
   }
 
-  // Handle re-send
   function handleResend(item) {
     onResend(item.url);
   }
 </script>
 
 <div class="history-container">
-  <div class="history-header">
-    <h3 class="history-title">📜 Recent Downloads</h3>
-    <span class="history-count">{history.length}/10</span>
-  </div>
-
   {#if history.length > 0}
     <div class="history-list">
       {#each history as item, index (item.id)}
         <div class="history-item" transition:slide={{ duration: 200 }}>
-          <div class="status-icon">
+          <div class="item-status">
             {#if item.status === 'success'}
-              ✅
+              <div class="status-icon success">✓</div>
             {:else if item.status === 'error'}
-              ❌
+              <div class="status-icon error">✕</div>
             {:else}
-              🟡
+              <div class="status-icon pending">•</div>
             {/if}
           </div>
-          <div class="url-info">
-            <div class="url-text" title={item.url}>
-              {truncateUrl(item.url)}
+          
+          <div class="item-content">
+            <div class="item-url" title={item.url}>
+              🔗 {truncateUrl(item.url)}
             </div>
-            <div class="url-meta">
-              <span class="url-domain">{getDomain(item.url)}</span>
-              <span class="timestamp">{getRelativeTime(item.timestamp)}</span>
+            <div class="item-meta">
+              <span class="item-domain">{getDomain(item.url)}</span>
+              <span class="item-time">{getRelativeTime(item.timestamp)}</span>
             </div>
-            {#if item.filename}
-              <div class="filename">{item.filename}</div>
-            {/if}
           </div>
-          <button
-            onclick={() => handleResend(item)}
-            class="resend-btn"
-            title="Re-send to Motrix"
-          >
-            �
+          
+          <button onclick={() => handleResend(item)} class="resend-btn">
+            ↗
           </button>
         </div>
       {/each}
@@ -83,169 +68,167 @@
   {:else}
     <div class="empty-state">
       <div class="empty-icon">📭</div>
-      <p class="empty-text">No downloads in history yet</p>
-      <p class="empty-help">URLs will appear here after being sent to Motrix</p>
+      <p class="empty-text">No downloads yet</p>
+      <p class="empty-help">History will appear here</p>
     </div>
   {/if}
 </div>
 
 <style>
   .history-container {
-    background-color: var(--bg-secondary);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
+    height: 100%;
+    padding: var(--spacing-md);
     overflow: hidden;
   }
 
-  .history-header {
-    padding: 12px 16px;
-    background-color: var(--bg-tertiary);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .history-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin: 0;
-  }
-
-  .history-count {
-    font-size: 11px;
-    color: var(--text-muted);
-    background-color: var(--bg-primary);
-    padding: 2px 6px;
-    border-radius: 10px;
-  }
-
   .history-list {
-    max-height: 200px;
+    max-height: 280px;
     overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .history-list::-webkit-scrollbar {
+    display: none;
   }
 
   .history-item {
     display: flex;
     align-items: center;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border-color);
-    transition: background-color 0.2s ease-in-out;
-    gap: 8px;
-  }
-
-  .status-icon {
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .url-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .url-text {
-    font-size: 12px;
-    color: var(--text-primary);
-    font-family: 'Courier New', monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .url-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 2px;
-  }
-
-  .url-domain {
-    font-size: 10px;
-    color: var(--text-muted);
-  }
-
-  .timestamp {
-    font-size: 9px;
-    color: var(--text-muted);
-  }
-
-  .filename {
-    font-size: 10px;
-    color: var(--color-green);
-    margin-top: 2px;
-    font-style: italic;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
   }
 
   .history-item:hover {
-    background-color: var(--bg-tertiary);
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-card);
   }
 
-  .history-item:last-child {
-    border-bottom: none;
-  }
-
-  .resend-btn {
-    padding: 6px 8px;
-    background-color: var(--color-blue);
-    border: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
+  .item-status {
     flex-shrink: 0;
   }
 
-  .resend-btn:hover {
-    background-color: var(--color-blue-hover);
-    transform: scale(1.1);
+  .status-icon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
   }
 
-  .resend-btn:active {
-    transform: scale(0.95);
+  .status-icon.success {
+    background: var(--accent-primary);
+    color: white;
+  }
+
+  .status-icon.error {
+    background: var(--accent-danger);
+    color: white;
+  }
+
+  .status-icon.pending {
+    background: var(--accent-warning);
+    color: white;
+  }
+
+  .item-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .item-url {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-family: monospace;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .item-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 10px;
+  }
+
+  .item-domain {
+    color: var(--accent-primary);
+    font-weight: 600;
+    background: rgba(0, 212, 160, 0.1);
+    padding: 2px var(--spacing-xs);
+    border-radius: 3px;
+  }
+
+  .item-time {
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-left: auto;
+  }
+
+  .resend-btn {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: var(--accent-secondary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: var(--transition);
+  }
+
+  .resend-btn:hover {
+    transform: scale(1.1);
+    background: #326bc7;
   }
 
   .empty-state {
-    padding: 32px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
     text-align: center;
     color: var(--text-muted);
+    min-height: 120px;
   }
 
   .empty-icon {
-    font-size: 32px;
-    margin-bottom: 8px;
+    font-size: 24px;
+    margin-bottom: var(--spacing-sm);
+    opacity: 0.6;
   }
 
   .empty-text {
     font-size: 13px;
-    font-weight: 500;
-    margin: 0 0 4px 0;
+    font-weight: 600;
+    margin: 0 0 var(--spacing-xs) 0;
     color: var(--text-secondary);
   }
 
   .empty-help {
     font-size: 11px;
     margin: 0;
-    font-style: italic;
-  }
-
-  /* Scrollbar */
-  .history-list::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  .history-list::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-  }
-
-  .history-list::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 2px;
-  }
-
-  .history-list::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    opacity: 0.7;
   }
 </style>
-

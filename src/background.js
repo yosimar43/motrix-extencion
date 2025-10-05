@@ -27,9 +27,30 @@ class MotrixManager {
     // Message handling from popup
     chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
     
+    // Storage changes (for real-time settings sync)
+    chrome.storage.onChanged.addListener(this.handleStorageChange.bind(this));
+    
     // Extension startup
     chrome.runtime.onStartup.addListener(this.onStartup.bind(this));
     chrome.runtime.onInstalled.addListener(this.onInstalled.bind(this));
+  }
+
+  // Handle storage changes for real-time settings sync
+  handleStorageChange(changes, areaName) {
+    if (areaName === 'local') {
+      if (changes.minSizeMB) {
+        this.settings.minSizeMB = changes.minSizeMB.newValue ?? 5;
+        console.log('Updated minSizeMB to:', this.settings.minSizeMB);
+      }
+      if (changes.skipNext) {
+        this.settings.skipNext = changes.skipNext.newValue ?? false;
+        console.log('Updated skipNext to:', this.settings.skipNext);
+      }
+      if (changes.motrixUrl) {
+        this.settings.motrixUrl = changes.motrixUrl.newValue ?? 'http://localhost:16800/jsonrpc';
+        console.log('Updated motrixUrl to:', this.settings.motrixUrl);
+      }
+    }
   }
 
   // Load settings from storage
@@ -71,20 +92,31 @@ class MotrixManager {
   // Handle download creation
   async handleDownloadCreated(downloadItem) {
     try {
+      console.log('Download created:', {
+        url: downloadItem.url,
+        filename: downloadItem.filename,
+        totalBytes: downloadItem.totalBytes,
+        skipNext: this.settings.skipNext,
+        minSizeMB: this.settings.minSizeMB
+      });
+
       // Skip if disabled
       if (this.settings.skipNext) {
-        console.log('Skipping download due to skip mode');
+        console.log('⏭️ Skipping download due to skip mode');
         return;
       }
 
       // Check file size and type
       if (!this.shouldInterceptDownload(downloadItem)) {
+        console.log('❌ Download not intercepted - file type or size filter');
         return;
       }
 
+      console.log('✅ Download will be intercepted and sent to Motrix');
+
       // Prevent duplicates
       if (this.duplicateTracker.has(downloadItem.url)) {
-        console.log('Duplicate download detected, skipping');
+        console.log('🔄 Duplicate download detected, skipping');
         return;
       }
 
@@ -123,35 +155,53 @@ class MotrixManager {
 
   // Check if download should be intercepted
   shouldInterceptDownload(downloadItem) {
-    // Check file size (if available)
-    if (downloadItem.totalBytes && downloadItem.totalBytes > 0) {
-      const sizeMB = downloadItem.totalBytes / (1024 * 1024);
-      if (sizeMB < this.settings.minSizeMB) {
-        return false;
-      }
-    }
-
-    // Check file extension
     const url = downloadItem.url || downloadItem.finalUrl || '';
     const filename = downloadItem.filename || '';
     
+    // Always check for magnet links first (they never have size info)
+    const isMagnetLink = url.startsWith('magnet:');
+    if (isMagnetLink) {
+      return true;
+    }
+
+    // Check file extension
     const supportedExtensions = [
-      '.zip', '.rar', '.7z', '.tar', '.gz',
-      '.mp4', '.avi', '.mkv', '.mov', '.wmv',
-      '.mp3', '.wav', '.flac', '.aac',
-      '.exe', '.msi', '.dmg', '.deb', '.rpm',
-      '.iso', '.img', '.bin',
-      '.torrent'
+      '.zip', '.rar', '.7z', '.tar', '.gz', '.bz2', '.xz',
+      '.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v',
+      '.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a', '.wma',
+      '.exe', '.msi', '.dmg', '.deb', '.rpm', '.pkg', '.app',
+      '.iso', '.img', '.bin', '.vhd', '.vmdk',
+      '.torrent', '.pdf', '.epub', '.mobi',
+      '.apk', '.ipa'
     ];
 
     const isSupportedFile = supportedExtensions.some(ext => 
       filename.toLowerCase().includes(ext) || url.toLowerCase().includes(ext)
     );
 
-    // Also check for magnet links
-    const isMagnetLink = url.startsWith('magnet:');
+    // If it's not a supported file type, don't intercept
+    if (!isSupportedFile) {
+      return false;
+    }
+
+    // Check file size (if available and minSizeMB > 0)
+    if (this.settings.minSizeMB > 0 && downloadItem.totalBytes && downloadItem.totalBytes > 0) {
+      const sizeMB = downloadItem.totalBytes / (1024 * 1024);
+      if (sizeMB < this.settings.minSizeMB) {
+        console.log(`File too small: ${sizeMB.toFixed(2)}MB < ${this.settings.minSizeMB}MB - ${filename || url}`);
+        return false;
+      }
+      console.log(`File size OK: ${sizeMB.toFixed(2)}MB >= ${this.settings.minSizeMB}MB - ${filename || url}`);
+    } else if (this.settings.minSizeMB > 0) {
+      // No size info available - use heuristics or default behavior
+      console.log(`No size info available for: ${filename || url} - proceeding with download`);
+      
+      // For supported files without size info, allow them through
+      // This is common for direct download links, streaming files, etc.
+      return true;
+    }
     
-    return isSupportedFile || isMagnetLink;
+    return isSupportedFile;
   }
 
   // Send download to Motrix via RPC
