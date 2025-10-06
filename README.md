@@ -1,4 +1,4 @@
-# ⚡ Motrix Control - Advanced Download Manager
+# ⚡ ![Version](https://img.shields.io/badge/version-3.2.1-blue.svg)otrix Control - Advanced Download Manager
 
 **A modern Chrome extension for Motrix download manager with intelligent file filtering, elegant UI animations, and seamless browser integration.**
 
@@ -13,9 +13,14 @@
 ### 🎯 **Core Functionality**
 - **Automatic Download Interception**: Captures browser downloads and redirects them to Motrix
 - **Smart File Filtering**: Configurable minimum file size with improved logic for unknown file sizes
-- **Duplicate Prevention**: Advanced URL tracking to prevent duplicate downloads
+- **Duplicate Prevention**: Advanced URL tracking to prevent duplicate downloads with memory-safe limits
 - **Real-time Status Monitoring**: Live connection status with animated indicators
 - **Intelligent Skip Mode**: Temporarily disable download interception with visual feedback
+- **Auto-Retry System**: Automatic retry for failed downloads with exponential backoff (up to 3 attempts)
+- **Download Queue**: Persistent queue prevents data loss even if Motrix is offline
+- **URL Validation**: Blocks dangerous protocols (file://, data:, chrome://) for security
+- **Filename Sanitization**: Prevents path traversal attacks with complete filename sanitization
+- **Request Timeout**: 10-second timeout prevents hanging connections
 
 ### 🎨 **Modern UI & UX**
 - **Welcome Screen**: Elegant onboarding with animated logo and feature highlights

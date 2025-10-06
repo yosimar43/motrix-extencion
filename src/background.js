@@ -7,15 +7,65 @@ class MotrixManager {
     this.downloadHistory = [];
     this.activeDownloads = new Set();
     this.duplicateTracker = new Set();
+    this.retryQueue = new Map(); // NEW: Queue for failed downloads
+    this.maxDuplicateTrackerSize = 1000; // NEW: Prevent memory leak
     this.settings = {
       minSizeMB: 5,
       skipNext: false,
       motrixUrl: 'http://localhost:16800/jsonrpc',
-      maxHistoryItems: 100
+      maxHistoryItems: 100,
+      autoRetry: true, // NEW: Auto-retry failed downloads
+      maxRetries: 3 // NEW: Max retry attempts
     };
     
     this.initializeListeners();
     this.loadSettings();
+    
+    // NEW: Start retry processor
+    this.startRetryProcessor();
+  }
+
+  // NEW: Process retry queue periodically
+  startRetryProcessor() {
+    setInterval(async () => {
+      if (this.retryQueue.size === 0) return;
+      
+      for (const [url, downloadInfo] of this.retryQueue.entries()) {
+        if (downloadInfo.retryCount >= this.settings.maxRetries) {
+          // Max retries reached, remove from queue
+          this.retryQueue.delete(url);
+          continue;
+        }
+        
+        // Increment retry count
+        downloadInfo.retryCount++;
+        
+        // Try to send again
+        const success = await this.sendToMotrix(downloadInfo.url, downloadInfo.filename);
+        
+        if (success) {
+          // Update history status
+          this.updateHistoryStatus(url, 'success');
+          this.showNotification(`Retry successful: ${downloadInfo.filename}`, 'success');
+          this.retryQueue.delete(url);
+        } else if (downloadInfo.retryCount >= this.settings.maxRetries) {
+          // Final retry failed
+          this.showNotification(`Failed after ${this.settings.maxRetries} retries: ${downloadInfo.filename}`, 'error');
+          this.retryQueue.delete(url);
+        }
+      }
+    }, 60000); // Check every minute
+  }
+
+  // NEW: Update history status
+  updateHistoryStatus(url, newStatus) {
+    const item = this.downloadHistory.find(h => h.url === url);
+    if (item) {
+      item.status = newStatus;
+      item.timestamp = Date.now();
+      this.saveSettings();
+      this.notifyHistoryUpdate();
+    }
   }
 
   // Initialize all event listeners
@@ -94,6 +144,11 @@ class MotrixManager {
         return;
       }
 
+      // Validate URL
+      if (!this.isValidDownloadUrl(downloadItem.url)) {
+        return;
+      }
+
       // Check file size and type
       if (!this.shouldInterceptDownload(downloadItem)) {
         return;
@@ -104,21 +159,44 @@ class MotrixManager {
         return;
       }
 
-      this.duplicateTracker.add(downloadItem.url);
+      // Add to tracker with size limit check
+      this.addToTracker(downloadItem.url);
       
-      // Cancel the browser download
-      await chrome.downloads.cancel(downloadItem.id);
-      await chrome.downloads.erase({ id: downloadItem.id });
+      // Store download info before canceling (prevent data loss)
+      const downloadInfo = {
+        url: downloadItem.url,
+        filename: downloadItem.filename || this.extractFilenameFromUrl(downloadItem.url),
+        timestamp: Date.now(),
+        retryCount: 0
+      };
+      
+      // Add to queue first
+      this.downloadQueue.set(downloadItem.url, downloadInfo);
+      
+      // Try to cancel the browser download
+      try {
+        await chrome.downloads.cancel(downloadItem.id);
+        await chrome.downloads.erase({ id: downloadItem.id });
+      } catch (cancelError) {
+        // Download might already be completed or cancelled
+        console.error('Error canceling download:', cancelError);
+      }
 
-      // Add to Motrix
-      const success = await this.sendToMotrix(downloadItem.url, downloadItem.filename);
+      // Send to Motrix with retry logic
+      const success = await this.sendToMotrixWithRetry(downloadInfo);
       
       if (success) {
-        this.addToHistory(downloadItem.url, downloadItem.filename, 'success');
+        this.addToHistory(downloadInfo.url, downloadInfo.filename, 'success');
         this.showNotification('Download sent to Motrix successfully! 🎉', 'success');
+        this.downloadQueue.delete(downloadInfo.url);
       } else {
-        this.addToHistory(downloadItem.url, downloadItem.filename, 'error');
+        this.addToHistory(downloadInfo.url, downloadInfo.filename, 'error');
         this.showNotification('Failed to send download to Motrix', 'error');
+        
+        // Add to retry queue if auto-retry is enabled
+        if (this.settings.autoRetry && downloadInfo.retryCount < this.settings.maxRetries) {
+          this.retryQueue.set(downloadInfo.url, downloadInfo);
+        }
       }
 
     } catch (error) {
@@ -127,13 +205,94 @@ class MotrixManager {
     }
   }
 
+  // NEW: Validate download URL
+  isValidDownloadUrl(url) {
+    if (!url) return false;
+    
+    try {
+      const urlObj = new URL(url);
+      
+      // Block local files
+      if (urlObj.protocol === 'file:') return false;
+      
+      // Block data URIs (usually small embedded files)
+      if (urlObj.protocol === 'data:') return false;
+      
+      // Block chrome:// and chrome-extension:// URIs
+      if (urlObj.protocol.startsWith('chrome')) return false;
+      
+      // Allow http, https, ftp, magnet
+      const validProtocols = ['http:', 'https:', 'ftp:', 'magnet:'];
+      if (!validProtocols.includes(urlObj.protocol)) return false;
+      
+      return true;
+    } catch {
+      // If URL parsing fails, it's probably a magnet link
+      return url.startsWith('magnet:');
+    }
+  }
+
+  // NEW: Add to tracker with size limit
+  addToTracker(url) {
+    // Prevent memory leak by limiting tracker size
+    if (this.duplicateTracker.size >= this.maxDuplicateTrackerSize) {
+      // Convert to array, keep last 80%, clear and re-add
+      const entries = Array.from(this.duplicateTracker);
+      const keepCount = Math.floor(this.maxDuplicateTrackerSize * 0.8);
+      this.duplicateTracker.clear();
+      entries.slice(-keepCount).forEach(entry => this.duplicateTracker.add(entry));
+    }
+    
+    this.duplicateTracker.add(url);
+  }
+
+  // NEW: Send to Motrix with retry logic
+  async sendToMotrixWithRetry(downloadInfo) {
+    let attempts = 0;
+    let lastError = null;
+    
+    while (attempts <= downloadInfo.retryCount) {
+      try {
+        const success = await this.sendToMotrix(downloadInfo.url, downloadInfo.filename);
+        if (success) {
+          return true;
+        }
+      } catch (error) {
+        lastError = error;
+      }
+      
+      attempts++;
+      
+      // Wait before retry (exponential backoff)
+      if (attempts <= downloadInfo.retryCount) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts)));
+      }
+    }
+    
+    console.error('Failed to send to Motrix after retries:', lastError);
+    return false;
+  }
+
   // Handle download state changes
   handleDownloadChanged(downloadDelta) {
     if (downloadDelta.state && downloadDelta.state.current === 'complete') {
-      // Clean up completed downloads from tracking
-      setTimeout(() => {
-        this.duplicateTracker.delete(downloadDelta.url);
-      }, 30000); // Clean up after 30 seconds
+      // Clean up completed downloads from tracking after delay
+      const url = downloadDelta.url;
+      if (url) {
+        setTimeout(() => {
+          this.duplicateTracker.delete(url);
+          this.downloadQueue.delete(url);
+        }, 30000); // Clean up after 30 seconds
+      }
+    }
+    
+    // Handle errors
+    if (downloadDelta.error) {
+      const url = downloadDelta.url;
+      if (url && this.downloadQueue.has(url)) {
+        // Download failed, remove from queue
+        this.downloadQueue.delete(url);
+      }
     }
   }
 
@@ -188,22 +347,35 @@ class MotrixManager {
   // Send download to Motrix via RPC
   async sendToMotrix(url, filename = '') {
     try {
+      // Validate inputs
+      if (!url) {
+        throw new Error('URL is required');
+      }
+
+      // Sanitize filename
+      const sanitizedFilename = filename ? this.sanitizeFilename(filename) : undefined;
+
       const rpcCall = {
         jsonrpc: '2.0',
         id: Date.now().toString(),
         method: 'aria2.addUri',
         params: [[url], {
-          'out': filename || undefined,
+          'out': sanitizedFilename,
           'max-connection-per-server': '16',
           'split': '16',
-          'continue': 'true'
+          'continue': 'true',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' // Prevent blocking
         }]
       };
 
       const response = await fetch(this.settings.motrixUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(rpcCall)
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(rpcCall),
+        signal: AbortSignal.timeout(10000) // 10 second timeout
       });
 
       if (!response.ok) {
@@ -213,7 +385,7 @@ class MotrixManager {
       const result = await response.json();
       
       if (result.error) {
-        throw new Error(`RPC Error: ${result.error.message}`);
+        throw new Error(`RPC Error: ${result.error.message || 'Unknown error'}`);
       }
 
       return !!result.result;
@@ -221,6 +393,19 @@ class MotrixManager {
       console.error('Error sending to Motrix:', error);
       return false;
     }
+  }
+
+  // NEW: Sanitize filename to prevent path traversal
+  sanitizeFilename(filename) {
+    if (!filename) return undefined;
+    
+    // Remove path separators and dangerous characters
+    return filename
+      .replace(/[/\\]/g, '_')  // Replace slashes
+      .replace(/[<>:"|?*]/g, '_')  // Replace invalid characters
+      .replace(/^\.+/, '_')  // No leading dots
+      .trim()
+      .substring(0, 255);  // Max filename length
   }
 
   // Add multiple URLs to Motrix
