@@ -21,53 +21,19 @@ class MotrixManager {
     this.initializeListeners();
     this.loadSettings();
     
-    // NEW: Start retry processor
-    this.startRetryProcessor();
+    // Clear any old queues on startup
+    this.clearOldQueues();
+  }
+
+  // Clear old download queues to prevent processing old downloads
+  clearOldQueues() {
+    this.downloadQueue.clear();
+    this.retryQueue.clear();
+    this.duplicateTracker.clear();
+    console.log('🧹 Cleared old download queues');
   }
 
   // NEW: Process retry queue periodically
-  startRetryProcessor() {
-    setInterval(async () => {
-      if (this.retryQueue.size === 0) return;
-      
-      for (const [url, downloadInfo] of this.retryQueue.entries()) {
-        if (downloadInfo.retryCount >= this.settings.maxRetries) {
-          // Max retries reached, remove from queue
-          this.retryQueue.delete(url);
-          continue;
-        }
-        
-        // Increment retry count
-        downloadInfo.retryCount++;
-        
-        // Try to send again
-        const success = await this.sendToMotrix(downloadInfo.url, downloadInfo.filename);
-        
-        if (success) {
-          // Update history status
-          this.updateHistoryStatus(url, 'success');
-          this.showNotification(`Retry successful: ${downloadInfo.filename}`, 'success');
-          this.retryQueue.delete(url);
-        } else if (downloadInfo.retryCount >= this.settings.maxRetries) {
-          // Final retry failed
-          this.showNotification(`Failed after ${this.settings.maxRetries} retries: ${downloadInfo.filename}`, 'error');
-          this.retryQueue.delete(url);
-        }
-      }
-    }, 60000); // Check every minute
-  }
-
-  // NEW: Update history status
-  updateHistoryStatus(url, newStatus) {
-    const item = this.downloadHistory.find(h => h.url === url);
-    if (item) {
-      item.status = newStatus;
-      item.timestamp = Date.now();
-      this.saveSettings();
-      this.notifyHistoryUpdate();
-    }
-  }
-
   // Initialize all event listeners
   initializeListeners() {
     // Download interception
@@ -112,10 +78,8 @@ class MotrixManager {
       this.settings.motrixUrl = result.motrixUrl ?? 'http://localhost:16800/jsonrpc';
       this.downloadHistory = result.downloadHistory ?? [];
       
-      // Restore download queue
-      if (result.downloadQueue) {
-        this.downloadQueue = new Map(result.downloadQueue);
-      }
+      // NO cargar downloadQueue desde almacenamiento para evitar descargas viejas
+      // this.downloadQueue siempre iniciará vacío
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -128,8 +92,8 @@ class MotrixManager {
         minSizeMB: this.settings.minSizeMB,
         skipNext: this.settings.skipNext,
         motrixUrl: this.settings.motrixUrl,
-        downloadHistory: this.downloadHistory.slice(-this.settings.maxHistoryItems),
-        downloadQueue: Array.from(this.downloadQueue.entries())
+        downloadHistory: this.downloadHistory.slice(-this.settings.maxHistoryItems)
+        // NO guardar downloadQueue para evitar persistencia de descargas viejas
       });
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -192,11 +156,8 @@ class MotrixManager {
       } else {
         this.addToHistory(downloadInfo.url, downloadInfo.filename, 'error');
         this.showNotification('Failed to send download to Motrix', 'error');
-        
-        // Add to retry queue if auto-retry is enabled
-        if (this.settings.autoRetry && downloadInfo.retryCount < this.settings.maxRetries) {
-          this.retryQueue.set(downloadInfo.url, downloadInfo);
-        }
+        this.downloadQueue.delete(downloadInfo.url);
+        // NO agregamos a retry queue para evitar descargas viejas
       }
 
     } catch (error) {
