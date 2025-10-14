@@ -327,18 +327,16 @@ class MotrixManager {
       return false;
     }
 
-    // Check file size (if available and minSizeMB > 0)
-    if (this.settings.minSizeMB > 0 && downloadItem.totalBytes && downloadItem.totalBytes > 0) {
-      const sizeMB = downloadItem.totalBytes / (1024 * 1024);
-      if (sizeMB < this.settings.minSizeMB) {
+    // Check file size - STRICT: Only intercept if size is available and >= 5MB
+    if (this.settings.minSizeMB > 0) {
+      if (downloadItem.totalBytes && downloadItem.totalBytes > 0) {
+        const sizeMB = downloadItem.totalBytes / (1024 * 1024);
+        return sizeMB >= this.settings.minSizeMB;
+      } else {
+        // No size info available - DON'T intercept to be safe
+        // This prevents intercepting small files without size info
         return false;
       }
-    } else if (this.settings.minSizeMB > 0) {
-      // No size info available - use heuristics or default behavior
-      
-      // For supported files without size info, allow them through
-      // This is common for direct download links, streaming files, etc.
-      return true;
     }
     
     return isSupportedFile;
