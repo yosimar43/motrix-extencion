@@ -139,9 +139,16 @@
   // Load history from background script
   async function loadHistoryFromBackground() {
     try {
+      console.log('🔍 Loading history from background...');
       const response = await chrome.runtime.sendMessage({ action: 'getHistory' });
+      console.log('📋 History response:', response);
+      
       if (response && response.success) {
         history = response.data || [];
+        console.log('✅ History loaded:', history.length, 'items');
+      } else {
+        console.log('❌ Failed to load history:', response);
+        history = [];
       }
     } catch (error) {
       console.error('Error loading history:', error);
@@ -153,6 +160,20 @@
   async function refreshHistory() {
     await loadHistoryFromBackground();
     showNotification('History refreshed', 'info');
+  }
+
+  // Clear history
+  async function clearHistory() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'clearHistory' });
+      if (response && response.success) {
+        history = [];
+        showNotification('History cleared', 'success');
+      }
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      showNotification('Failed to clear history', 'error');
+    }
   }
 
   // --- Functions ---
@@ -374,13 +395,22 @@
       <div class="history-section">
         <div class="history-header">
           <h3 class="section-title">📜 History</h3>
-          <button
-            onclick={refreshHistory}
-            class="btn btn-ghost btn-sm"
-            title="Refresh history"
-          >
-            🔄
-          </button>
+          <div class="history-actions">
+            <button
+              onclick={refreshHistory}
+              class="btn btn-ghost btn-sm"
+              title="Refresh history"
+            >
+              🔄
+            </button>
+            <button
+              onclick={clearHistory}
+              class="btn btn-ghost btn-sm btn-danger"
+              title="Clear history"
+            >
+              🗑️
+            </button>
+          </div>
         </div>
         <div class="history-content">
           <History {history} onResend={handleResend} />
@@ -763,6 +793,11 @@
     justify-content: space-between;
     padding: var(--spacing-md);
     border-bottom: 1px solid var(--border-color);
+  }
+
+  .history-actions {
+    display: flex;
+    gap: var(--spacing-sm);
   }
 
   .history-content {

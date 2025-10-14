@@ -7,15 +7,14 @@ class MotrixManager {
     this.downloadHistory = [];
     this.activeDownloads = new Set();
     this.duplicateTracker = new Set();
-    this.retryQueue = new Map(); // NEW: Queue for failed downloads
-    this.maxDuplicateTrackerSize = 1000; // NEW: Prevent memory leak
+    this.maxDuplicateTrackerSize = 1000;
     this.settings = {
       minSizeMB: 5,
       skipNext: false,
       motrixUrl: 'http://localhost:16800/jsonrpc',
       maxHistoryItems: 100,
-      autoRetry: true, // NEW: Auto-retry failed downloads
-      maxRetries: 3 // NEW: Max retry attempts
+      autoRetry: false, // Deshabilitado para evitar descargas viejas
+      maxRetries: 1 // Solo un intento
     };
     
     this.initializeListeners();
@@ -28,12 +27,10 @@ class MotrixManager {
   // Clear old download queues to prevent processing old downloads
   clearOldQueues() {
     this.downloadQueue.clear();
-    this.retryQueue.clear();
     this.duplicateTracker.clear();
     console.log('🧹 Cleared old download queues');
   }
 
-  // NEW: Process retry queue periodically
   // Initialize all event listeners
   initializeListeners() {
     // Download interception
@@ -146,8 +143,8 @@ class MotrixManager {
         console.error('Error canceling download:', cancelError);
       }
 
-      // Send to Motrix with retry logic
-      const success = await this.sendToMotrixWithRetry(downloadInfo);
+      // Send to Motrix
+      const success = await this.sendToMotrix(downloadInfo.url, downloadInfo.filename);
       
       if (success) {
         this.addToHistory(downloadInfo.url, downloadInfo.filename, 'success');
@@ -166,7 +163,7 @@ class MotrixManager {
     }
   }
 
-  // NEW: Validate download URL
+  // Validate download URL
   isValidDownloadUrl(url) {
     if (!url) return false;
     
@@ -193,7 +190,7 @@ class MotrixManager {
     }
   }
 
-  // NEW: Add to tracker with size limit
+  // Add to tracker with size limit
   addToTracker(url) {
     // Prevent memory leak by limiting tracker size
     if (this.duplicateTracker.size >= this.maxDuplicateTrackerSize) {
@@ -205,33 +202,6 @@ class MotrixManager {
     }
     
     this.duplicateTracker.add(url);
-  }
-
-  // NEW: Send to Motrix with retry logic
-  async sendToMotrixWithRetry(downloadInfo) {
-    let attempts = 0;
-    let lastError = null;
-    
-    while (attempts <= downloadInfo.retryCount) {
-      try {
-        const success = await this.sendToMotrix(downloadInfo.url, downloadInfo.filename);
-        if (success) {
-          return true;
-        }
-      } catch (error) {
-        lastError = error;
-      }
-      
-      attempts++;
-      
-      // Wait before retry (exponential backoff)
-      if (attempts <= downloadInfo.retryCount) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts)));
-      }
-    }
-    
-    console.error('Failed to send to Motrix after retries:', lastError);
-    return false;
   }
 
   // Handle download state changes
@@ -354,7 +324,7 @@ class MotrixManager {
     }
   }
 
-  // NEW: Sanitize filename to prevent path traversal
+  // Sanitize filename to prevent path traversal
   sanitizeFilename(filename) {
     if (!filename) return undefined;
     
@@ -412,6 +382,8 @@ class MotrixManager {
 
   // Add to download history
   addToHistory(url, filename, status) {
+    console.log('📝 Adding to history:', { url: url.substring(0, 50), filename, status });
+    
     const historyItem = {
       id: Date.now().toString(),
       url,
@@ -427,6 +399,8 @@ class MotrixManager {
       this.downloadHistory = this.downloadHistory.slice(0, this.settings.maxHistoryItems);
     }
     
+    console.log('📊 History now has', this.downloadHistory.length, 'items');
+    
     this.saveSettings();
     
     // Notify popup about history update
@@ -438,7 +412,8 @@ class MotrixManager {
     try {
       await chrome.runtime.sendMessage({ action: 'historyUpdated' });
     } catch (error) {
-      // Popup might not be open, which is fine
+      // Ignore errors if no popup is open
+      console.log('No popup to notify about history update');
     }
   }
 
