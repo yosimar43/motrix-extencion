@@ -44,6 +44,8 @@
               <div class="status-icon success">✓</div>
             {:else if item.status === 'error'}
               <div class="status-icon error">✕</div>
+            {:else if item.status === 'browser_fallback'}
+              <div class="status-icon browser">📥</div>
             {:else}
               <div class="status-icon pending">•</div>
             {/if}
@@ -133,6 +135,11 @@
 
   .status-icon.error {
     background: var(--accent-danger);
+    color: white;
+  }
+
+  .status-icon.browser {
+    background: var(--accent-warning);
     color: white;
   }
 

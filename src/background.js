@@ -134,27 +134,28 @@ class MotrixManager {
       // Add to queue first
       this.downloadQueue.set(downloadItem.url, downloadInfo);
       
-      // Try to cancel the browser download
-      try {
-        await chrome.downloads.cancel(downloadItem.id);
-        await chrome.downloads.erase({ id: downloadItem.id });
-      } catch (cancelError) {
-        // Download might already be completed or cancelled
-        console.error('Error canceling download:', cancelError);
-      }
-
-      // Send to Motrix
+      // Send to Motrix FIRST (before canceling browser download)
       const success = await this.sendToMotrix(downloadInfo.url, downloadInfo.filename);
       
       if (success) {
+        // Motrix is available - cancel browser download
+        try {
+          await chrome.downloads.cancel(downloadItem.id);
+          await chrome.downloads.erase({ id: downloadItem.id });
+        } catch (cancelError) {
+          console.error('Error canceling download:', cancelError);
+        }
+        
         this.addToHistory(downloadInfo.url, downloadInfo.filename, 'success');
         this.showNotification('Download sent to Motrix successfully! 🎉', 'success');
         this.downloadQueue.delete(downloadInfo.url);
       } else {
-        this.addToHistory(downloadInfo.url, downloadInfo.filename, 'error');
-        this.showNotification('Failed to send download to Motrix', 'error');
+        // Motrix not available - let browser download continue
+        console.log('Motrix not available, allowing browser download to continue');
+        this.addToHistory(downloadInfo.url, downloadInfo.filename, 'browser_fallback');
+        this.showNotification('Motrix not available. Download continuing in browser 📥', 'warning');
         this.downloadQueue.delete(downloadInfo.url);
-        // NO agregamos a retry queue para evitar descargas viejas
+        // Don't cancel browser download - let it proceed normally
       }
 
     } catch (error) {
