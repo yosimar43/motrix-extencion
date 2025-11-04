@@ -7,6 +7,7 @@ class MotrixManager {
     this.downloadHistory = [];
     this.activeDownloads = new Set();
     this.duplicateTracker = new Set();
+    this.browserFallbackUrls = new Set(); // URLs que ya se delegaron al navegador
     this.maxDuplicateTrackerSize = 1000;
     this.settings = {
       minSizeMB: 5,
@@ -28,6 +29,7 @@ class MotrixManager {
   clearOldQueues() {
     this.downloadQueue.clear();
     this.duplicateTracker.clear();
+    this.browserFallbackUrls.clear();
     console.log('🧹 Cleared old download queues');
   }
 
@@ -105,6 +107,12 @@ class MotrixManager {
         return;
       }
 
+      // Skip if this URL was already delegated to browser
+      if (this.browserFallbackUrls.has(downloadItem.url)) {
+        console.log('⏭️ Skipping download already delegated to browser:', downloadItem.url.substring(0, 50));
+        return;
+      }
+
       // Validate URL
       if (!this.isValidDownloadUrl(downloadItem.url)) {
         return;
@@ -152,6 +160,10 @@ class MotrixManager {
       } else {
         // Motrix not available - let browser download continue
         console.log('Motrix not available, allowing browser download to continue');
+        
+        // Mark this URL as delegated to browser
+        this.browserFallbackUrls.add(downloadInfo.url);
+        
         this.addToHistory(downloadInfo.url, downloadInfo.filename, 'browser_fallback');
         this.showNotification('Motrix not available. Download continuing in browser 📥', 'warning');
         this.downloadQueue.delete(downloadInfo.url);
@@ -214,6 +226,7 @@ class MotrixManager {
         setTimeout(() => {
           this.duplicateTracker.delete(url);
           this.downloadQueue.delete(url);
+          this.browserFallbackUrls.delete(url); // Limpiar también del fallback
         }, 30000); // Clean up after 30 seconds
       }
     }
@@ -224,6 +237,7 @@ class MotrixManager {
       if (url && this.downloadQueue.has(url)) {
         // Download failed, remove from queue
         this.downloadQueue.delete(url);
+        this.browserFallbackUrls.delete(url); // Limpiar también del fallback
       }
     }
   }
